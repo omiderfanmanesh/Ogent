@@ -127,19 +127,30 @@ class SocketManager:
                 if is_agent:
                     # This is an agent connection
                     agent_info = auth.get('agent_info', {})
-                    hostname = agent_info.get('hostname', 'unknown')
                     
-                    logger.info(f"Agent connected: {hostname} (SID: {sid}, ID: {agent_id})")
+                    # Generate a unique agent ID if not provided
+                    agent_id = f"agent-{sid}"
+                    
+                    # Only store hostname if it's different from agent_id
+                    hostname = agent_info.get('hostname', agent_id)
                     
                     # Store agent information
                     connected_agents[sid] = {
                         'sid': sid,
-                        'agent_id': agent_id,
-                        'username': auth.get('username', 'admin'),
+                        'agent_id': agent_id,  # Store the agent ID
                         'connected_at': datetime.utcnow().isoformat(),
-                        'agent_info': agent_info,
-                        'is_agent': True
+                        'agent_info': {
+                            'platform': agent_info.get('platform', 'unknown'),
+                            'version': agent_info.get('version', 'unknown'),
+                            'python_version': agent_info.get('python_version', 'unknown'),
+                            'ssh_enabled': agent_info.get('ssh_enabled', False),
+                            'ssh_target': agent_info.get('ssh_target', None)
+                        }
                     }
+                    
+                    # Only add hostname if it's different from agent_id
+                    if hostname != agent_id:
+                        connected_agents[sid]['hostname'] = hostname
                     
                     logger.info(f"Stored agent in connected_agents: {connected_agents[sid]}")
                     logger.info(f"Connected agents: {connected_agents}")
@@ -155,8 +166,12 @@ class SocketManager:
                     # Join the agents room
                     await self.sio.enter_room(sid, 'agents')
                     
-                    # Notify clients about the new agent
-                    await self.sio.emit('agent_connected', connected_agents[sid], room='clients')
+                    # Send connection response
+                    await self.sio.emit('connection_response', {
+                        'status': 'connected'
+                    }, room=sid)
+                    
+                    return True
                 else:
                     # This is a client connection
                     username = auth.get('username', 'anonymous')
@@ -384,54 +399,76 @@ class SocketManager:
                 }, room=sid)
         
         @self.sio.event
-        async def register(sid, data):
-            """Handle agent registration"""
+        async def register_agent(sid, data):
+            """Handle agent registration."""
             try:
-                logger.info(f"Received register event from {sid}: {data}")
+                logger.info(f"Registering agent {sid} with data: {data}")
                 
-                # Get agent ID from data
-                agent_id = data.get('agent_id')
-                if not agent_id:
-                    logger.warning(f"Registration request without agent_id from {sid}")
-                    await self.sio.emit('registration_response', {
-                        'status': 'error',
-                        'message': 'Agent ID is required'
-                    }, room=sid)
-                    return
+                # Extract agent information
+                agent_info = data.get('agent_info', {})
                 
-                # Get user from session
-                session = await self.sio.get_session(sid)
-                username = session.get("user", "unknown")
+                # Generate a unique agent ID
+                agent_id = f"agent-{sid}"
                 
-                # Store agent information
-                connected_agents[sid] = {
-                    'sid': sid,
-                    'agent_id': agent_id,
-                    'username': username,
-                    'connected_at': datetime.utcnow().isoformat()
-                }
+                # Only store hostname if it's different from agent_id
+                hostname = agent_info.get('hostname', agent_id)
                 
-                logger.info(f"Stored agent in connected_agents: {connected_agents[sid]}")
-                logger.info(f"Connected agents: {connected_agents}")
+                # Update agent information (preserve existing data)
+                if sid in connected_agents:
+                    connected_agents[sid].update({
+                        'agent_info': {
+                            'platform': agent_info.get('platform', 'unknown'),
+                            'version': agent_info.get('version', 'unknown'),
+                            'python_version': agent_info.get('python_version', 'unknown'),
+                            'ssh_enabled': agent_info.get('ssh_enabled', False),
+                            'ssh_target': agent_info.get('ssh_target', None)
+                        }
+                    })
+                    # Only add hostname if it's different from agent_id
+                    if hostname != agent_id:
+                        connected_agents[sid]['hostname'] = hostname
+                    else:
+                        connected_agents[sid].pop('hostname', None)  # Remove hostname if it's the same as agent_id
+                else:
+                    # Store new agent information
+                    connected_agents[sid] = {
+                        'sid': sid,
+                        'agent_id': agent_id,  # Store the agent ID
+                        'connected_at': datetime.utcnow().isoformat(),
+                        'agent_info': {
+                            'platform': agent_info.get('platform', 'unknown'),
+                            'version': agent_info.get('version', 'unknown'),
+                            'python_version': agent_info.get('python_version', 'unknown'),
+                            'ssh_enabled': agent_info.get('ssh_enabled', False),
+                            'ssh_target': agent_info.get('ssh_target', None)
+                        }
+                    }
+                    # Only add hostname if it's different from agent_id
+                    if hostname != agent_id:
+                        connected_agents[sid]['hostname'] = hostname
                 
                 # Store agent in Redis if enabled
                 if self.redis_enabled:
-                    redis_manager.set(f"agent:{agent_id}", connected_agents[sid])
+                    redis_manager.set(f"agent:{sid}", connected_agents[sid])
                     redis_manager.publish("agent_events", {
                         "type": "agent_registered",
                         "data": connected_agents[sid]
                     })
                 
-                logger.info(f"Agent registered: {agent_id} (SID: {sid})")
-                
-                # Send registration confirmation
+                # Send registration response with agent ID
                 await self.sio.emit('registration_response', {
                     'status': 'success',
                     'message': 'Agent registered successfully',
-                    'agent_id': agent_id
+                    'agent_id': connected_agents[sid]['agent_id']  # Include agent ID in response
                 }, room=sid)
+                
+                logger.info(f"Agent {sid} registered successfully with ID {connected_agents[sid]['agent_id']}")
             except Exception as e:
-                logger.error(f"Error handling agent registration: {str(e)}")
+                logger.error(f"Error registering agent {sid}: {str(e)}")
+                await self.sio.emit('registration_response', {
+                    'status': 'error',
+                    'message': f'Registration failed: {str(e)}'
+                }, room=sid)
     
     def get_agents(self) -> List[Dict[str, Any]]:
         """Get a list of all connected agents"""

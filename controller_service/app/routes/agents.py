@@ -23,12 +23,22 @@ async def list_agents(current_user: Dict = Depends(get_current_user)):
     agents = []
     for sid, agent_info in connected_agents.items():
         agent_id = agent_info.get('agent_id', f'agent-{sid}')
-        agents.append({
-            'sid': sid,
-            'agent_id': agent_id,
-            'username': agent_info.get('username', 'unknown'),
-            'connected_at': agent_info.get('connected_at', datetime.utcnow().isoformat())
-        })
+        agent_data = {
+            "sid": sid,
+            "agent_id": agent_id,
+            "connected_at": agent_info.get('connected_at', datetime.utcnow().isoformat()),
+            "agent_info": {
+                "platform": agent_info.get('agent_info', {}).get('platform', 'unknown'),
+                "version": agent_info.get('agent_info', {}).get('version', 'unknown'),
+                "python": agent_info.get('agent_info', {}).get('python_version', 'unknown'),
+                "ssh_enabled": agent_info.get('agent_info', {}).get('ssh_enabled', False),
+                "ssh_target": agent_info.get('agent_info', {}).get('ssh_target', None)
+            }
+        }
+        # Only include hostname if it's different from agent_id
+        if 'hostname' in agent_info and agent_info['hostname'] != agent_id:
+            agent_data["hostname"] = agent_info['hostname']
+        agents.append(agent_data)
     return agents
 
 @router.get("/{agent_id}", response_model=Dict[str, Any])
@@ -38,12 +48,22 @@ async def get_agent(agent_id: str, current_user: Dict = Depends(get_current_user
     """
     for sid, agent_info in connected_agents.items():
         if agent_info.get('agent_id') == agent_id:
-            return {
-                'sid': sid,
-                'agent_id': agent_id,
-                'username': agent_info.get('username', 'unknown'),
-                'connected_at': agent_info.get('connected_at', datetime.utcnow().isoformat())
+            response = {
+                "sid": sid,
+                "agent_id": agent_id,
+                "connected_at": agent_info.get('connected_at', datetime.utcnow().isoformat()),
+                "agent_info": {
+                    "platform": agent_info.get('agent_info', {}).get('platform', 'unknown'),
+                    "version": agent_info.get('agent_info', {}).get('version', 'unknown'),
+                    "python": agent_info.get('agent_info', {}).get('python_version', 'unknown'),
+                    "ssh_enabled": agent_info.get('agent_info', {}).get('ssh_enabled', False),
+                    "ssh_target": agent_info.get('agent_info', {}).get('ssh_target', None)
+                }
             }
+            # Only include hostname if it's different from agent_id
+            if 'hostname' in agent_info and agent_info['hostname'] != agent_id:
+                response["hostname"] = agent_info['hostname']
+            return response
     
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,

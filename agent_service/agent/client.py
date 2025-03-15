@@ -5,11 +5,11 @@ import asyncio
 import socketio
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
+import platform
 
 from .config import config
 from .manager import agent_manager
-from .utils import UTC
 
 # Configure logging
 logger = logging.getLogger("agent.client")
@@ -26,6 +26,7 @@ sio = socketio.AsyncClient(
 # Track connection state
 connected = False
 reconnect_attempts = 0
+agent_id = None  # Store the agent ID
 
 async def get_auth_token():
     """Get authentication token from the Controller Service"""
@@ -94,6 +95,19 @@ async def connection_response(data):
     logger.info(f"Connection response: {data}")
 
 @sio.event
+async def registration_response(data):
+    """Handle registration response from the Controller Service"""
+    global agent_id
+    logger.info(f"Registration response: {data}")
+    
+    if data.get('status') == 'success':
+        # Store the agent ID
+        agent_id = data.get('agent_id')
+        logger.info(f"Agent registered successfully with ID: {agent_id}")
+    else:
+        logger.error(f"Agent registration failed: {data.get('message', 'Unknown error')}")
+
+@sio.event
 async def command_response(data):
     """Handle command response from the Controller Service"""
     logger.info(f"Command response received: {data}")
@@ -109,7 +123,7 @@ async def execute_command_event(data):
         await sio.emit('command_result', {
             'status': 'error',
             'message': 'Invalid command format',
-            'timestamp': datetime.now(UTC).isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         })
         return
     
@@ -141,7 +155,7 @@ async def execute_command_event(data):
         'command_id': command_id,
         'result': result,
         'requester_sid': requester_sid,
-        'timestamp': datetime.now(UTC).isoformat()
+        'timestamp': datetime.now(timezone.utc).isoformat()
     })
     
     # Publish to Redis if available
@@ -154,7 +168,7 @@ async def execute_command_event(data):
                 'command_id': command_id,
                 'result': result,
                 'requester_sid': requester_sid,
-                'timestamp': datetime.now(UTC).isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         }))
 
@@ -179,24 +193,33 @@ async def connect_to_controller():
             local_info = agent_manager.executors.get("local", {}).get_target_info() if "local" in agent_manager.executors else {}
             ssh_info = agent_manager.executors.get("ssh", {}).get_target_info() if "ssh" in agent_manager.executors else {}
             
+            # Prepare agent info
+            agent_info = {
+                "hostname": local_info.get("hostname", platform.node()),
+                "platform": local_info.get("platform", platform.system()),
+                "version": local_info.get("version", platform.release()),
+                "python_version": local_info.get("python_version", platform.python_version()),
+                "ssh_enabled": "ssh" in agent_manager.executors and agent_manager.executors["ssh"].enabled,
+                "ssh_target": f"{ssh_info.get('username', '')}@{ssh_info.get('hostname', '')}" if "ssh" in agent_manager.executors else None
+            }
+            
             await sio.connect(
                 config.controller_url, 
                 auth={
                     "token": token,
                     "is_agent": True,  # Identify as an agent
-                    "agent_info": {
-                        "hostname": local_info.get("hostname", "unknown"),
-                        "platform": local_info.get("platform", "unknown"),
-                        "version": local_info.get("version", "unknown"),
-                        "python_version": local_info.get("python_version", "unknown"),
-                        "ssh_enabled": "ssh" in agent_manager.executors and agent_manager.executors["ssh"].enabled,
-                        "ssh_target": f"{ssh_info.get('username', '')}@{ssh_info.get('hostname', '')}" if "ssh" in agent_manager.executors else None
-                    }
+                    "agent_info": agent_info
                 }
             )
             
-            # Wait until disconnected
-            await sio.wait()
+            # Register agent with controller using the same info
+            await sio.emit("register_agent", {
+                "agent_info": agent_info
+            })
+            
+            # Keep the connection alive
+            while True:
+                await asyncio.sleep(1)
             
         except socketio.exceptions.ConnectionError as e:
             logger.error(f"Connection error: {str(e)}")

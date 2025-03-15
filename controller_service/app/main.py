@@ -322,7 +322,8 @@ async def read_users_me(current_user: Dict = Depends(get_current_active_user)):
 @app.get("/agents")
 async def get_connected_agents(current_user = Depends(get_current_user)):
     """Get list of connected agents."""
-    return {"connected_agents": connected_agents}
+    from .routes.agents import list_agents
+    return await list_agents(current_user)
 
 @app.get("/health")
 async def health_check():
