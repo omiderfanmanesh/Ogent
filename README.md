@@ -655,4 +655,96 @@ Response:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Using Postman
+
+You can interact with the Ogent API using Postman. Here's how to set up and use the main endpoints:
+
+### Setting Up Postman
+
+1. Create a new collection in Postman for Ogent
+2. Set up an environment with variables:
+   - `base_url`: `http://localhost:8001`
+   - `token`: (will be set automatically after authentication)
+
+### Authentication
+
+1. **Get Authentication Token**
+   - Method: `POST`
+   - URL: `{{base_url}}/token`
+   - Headers:
+     ```
+     Content-Type: application/x-www-form-urlencoded
+     ```
+   - Body (x-www-form-urlencoded):
+     ```
+     username: admin
+     password: password
+     ```
+   - Response:
+     ```json
+     {
+       "access_token": "your.jwt.token",
+       "token_type": "bearer"
+     }
+     ```
+   - Test Script (to automatically set the token):
+     ```javascript
+     var jsonData = JSON.parse(responseBody);
+     pm.environment.set("token", jsonData.access_token);
+     ```
+
+### Available Endpoints
+
+1. **Health Check**
+   - Method: `GET`
+   - URL: `{{base_url}}/health`
+   - No authentication required
+   - Response:
+     ```json
+     {
+       "status": "healthy"
+     }
+     ```
+
+2. **List Connected Agents**
+   - Method: `GET`
+   - URL: `{{base_url}}/agents`
+   - Headers:
+     ```
+     Authorization: Bearer {{token}}
+     ```
+   - Response:
+     ```json
+     {
+       "connected_agents": {
+         "agent_id": {
+           "username": "admin",
+           "connected_at": "2025-03-15T21:27:26.089505"
+         }
+       }
+     }
+     ```
+
+### Tips for Using Postman
+
+1. **Environment Variables**
+   - Create an environment to store variables like `base_url` and `token`
+   - Use `{{variable_name}}` syntax to reference variables in requests
+   - The token is automatically set after successful authentication
+
+2. **Collection Organization**
+   - Group related requests in folders (e.g., "Authentication", "Agents", etc.)
+   - Use descriptive names for requests
+   - Add examples and documentation to requests
+
+3. **Testing**
+   - Use the "Tests" tab to write test scripts
+   - Verify response status codes and data
+   - Chain requests using environment variables
+
+4. **Troubleshooting**
+   - Check the Console in Postman for detailed request/response information
+   - Verify the token is being set correctly
+   - Ensure all required headers are included 
