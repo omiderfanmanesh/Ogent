@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  controller:
+    build:
+      context: ./controller_service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=your_secure_secret_key_for_development
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./controller_service:/app
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ./agent_service
+      dockerfile: Dockerfile
+    depends_on:
+      - controller
+    environment:
+      - CONTROLLER_URL=http://controller:8000
+      - AGENT_USERNAME=admin
+      - AGENT_PASSWORD=password
+      - RECONNECT_DELAY=5
+      - MAX_RECONNECT_ATTEMPTS=10
+      - REDIS_URL=redis://redis:6379/0
+      - SSH_ENABLED=true
+      - SSH_HOST=ubuntu-target
+      - SSH_PORT=22
+      - SSH_USERNAME=ubuntu
+      - SSH_PASSWORD=password
+    volumes:
+      - ./agent_service:/app
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  ubuntu-target:
+    build:
+      context: ./ubuntu-target
+      dockerfile: Dockerfile
+    ports:
+      - "2222:22"
+    environment:
+      - SSH_USER=ubuntu
+      - SSH_PASSWORD=password
+    restart: unless-stopped
+
+volumes:
+  redis-data: 
