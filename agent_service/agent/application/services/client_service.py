@@ -5,12 +5,13 @@ import asyncio
 import logging
 import json
 from typing import Dict, Any, Optional, Callable, Awaitable
-from datetime import datetime, UTC
+from datetime import datetime
 
 import socketio
 
 from agent.infrastructure.config.config import config
 from agent.application.services.agent_manager import AgentManager
+from agent.utils import UTC
 
 logger = logging.getLogger("agent.client")
 
@@ -62,7 +63,11 @@ class ClientService:
             # Connect to the controller service
             await self.sio.connect(
                 config.controller_url,
-                auth={"agent_id": self.agent_id, "token": token},
+                auth={
+                    "agent_id": self.agent_id, 
+                    "token": token,
+                    "is_agent": True
+                },
                 wait_timeout=60
             )
             

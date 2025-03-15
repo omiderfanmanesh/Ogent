@@ -1,9 +1,10 @@
 # Ogent - Real-time Command Execution System
 
-Ogent is a real-time command execution system that allows you to execute commands on remote machines through a secure, centralized controller. It consists of two main components:
+Ogent is a real-time command execution system that allows you to execute commands on remote machines through a secure, centralized controller. It consists of three main components:
 
 1. **Controller Service**: A FastAPI-based web service that authenticates users, manages connections, and routes commands.
 2. **Agent Service**: A service that connects to the Controller Service and executes commands on the local machine or via SSH on remote targets.
+3. **Redis Service**: A message broker and caching service that facilitates communication between components.
 
 ## Features
 
@@ -17,6 +18,7 @@ Ogent is a real-time command execution system that allows you to execute command
 - **Redis Integration**: Scalable communication with Redis pub/sub for distributed deployments.
 - **AI-powered Command Processing**: Validate, optimize, and enrich commands using LangChain and OpenAI.
 - **Ubuntu Target**: Ready-to-use Ubuntu container with SSH for testing and development.
+- **Customizable Redis**: Dedicated Redis service with configurable settings for optimal performance.
 
 ## Architecture
 
@@ -103,6 +105,12 @@ The Ogent system consists of two main services that work together to provide sec
    - Report results back to the controller
    - Provide real-time progress updates
    - Manage connection state and reconnection
+
+3. **Redis Service**: Provides infrastructure for:
+   - Message passing between services
+   - Caching command results and agent information
+   - Socket.IO adapter for scaling the Controller Service
+   - Pub/Sub for real-time updates
 
 ### Data Flow in the Ogent System
 
@@ -215,6 +223,7 @@ For scaling and reliability, the system can use:
    - As a Socket.IO adapter for scaling the Controller Service
    - For message passing between services
    - For caching command results
+   - Configurable for different deployment scenarios
 
 2. **Reconnection Logic**:
    - Agents automatically reconnect to the Controller Service if disconnected
@@ -247,6 +256,12 @@ For scaling and reliability, the system can use:
    ```
    cd agent_service
    pip install -r requirements.txt
+   cp .env.example .env  # Edit the .env file with your settings
+   ```
+
+4. Set up the Redis Service (optional, if not using Docker):
+   ```
+   cd redis_service
    cp .env.example .env  # Edit the .env file with your settings
    ```
 

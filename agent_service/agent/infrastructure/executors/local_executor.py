@@ -6,8 +6,9 @@ import logging
 import platform
 import os
 from typing import Dict, Any, Optional, Callable, Awaitable, List, Tuple
-from datetime import datetime, UTC
+from datetime import datetime
 
+from agent.utils import UTC
 from agent.infrastructure.executors.base_executor import BaseExecutor
 
 logger = logging.getLogger("agent.executor.local")

@@ -3,11 +3,12 @@
 import abc
 import uuid
 from typing import Dict, Any, Optional, Callable, Awaitable
-from datetime import datetime, UTC
+from datetime import datetime
 import platform
 import logging
 
 from agent.domain.interfaces.command_executor import CommandExecutorInterface
+from agent.utils import UTC
 
 logger = logging.getLogger("agent.executor")
 

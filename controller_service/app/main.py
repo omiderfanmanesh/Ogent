@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from .routes import agents
-from .socket_manager import socket_manager
+from .socket_manager import socket_manager, connected_agents
 from .auth import (
     authenticate_user,
     create_access_token,
@@ -190,6 +190,42 @@ async def disconnect(sid):
     logger.info(f"Client disconnected: {sid}")
 
 @sio.event
+async def register(sid, data):
+    """Handle agent registration"""
+    logger.info(f"Received register event from {sid}: {data}")
+    
+    # Get agent ID from data
+    agent_id = data.get('agent_id')
+    if not agent_id:
+        logger.warning(f"Registration request without agent_id from {sid}")
+        await sio.emit('registration_response', {
+            'status': 'error',
+            'message': 'Agent ID is required'
+        }, room=sid)
+        return
+    
+    # Get user from session
+    session = await sio.get_session(sid)
+    username = session.get("user", "unknown")
+    
+    # Store agent information
+    connected_agents[sid] = {
+        "agent_id": agent_id,
+        "username": username,
+        "connected_at": datetime.utcnow().isoformat()
+    }
+    
+    logger.info(f"Agent registered: {agent_id} (SID: {sid})")
+    logger.info(f"Connected agents: {connected_agents}")
+    
+    # Send registration confirmation
+    await sio.emit('registration_response', {
+        'status': 'success',
+        'message': 'Agent registered successfully',
+        'agent_id': agent_id
+    }, room=sid)
+
+@sio.event
 async def execute_command(sid, data):
     """Handle command execution request"""
     # Get user from session
@@ -284,18 +320,14 @@ async def read_users_me(current_user: Dict = Depends(get_current_active_user)):
     return {"username": current_user["username"], "disabled": current_user.get("disabled", False)}
 
 @app.get("/agents")
-async def list_agents(current_user: User = Depends(get_current_active_user)):
-    """Endpoint to list connected agents"""
-    return {
-        "agents": [
-            {
-                "id": sid,
-                "username": info["username"],
-                "connected_at": info["connected_at"]
-            }
-            for sid, info in connected_agents.items()
-        ]
-    }
+async def get_connected_agents(current_user = Depends(get_current_user)):
+    """Get list of connected agents."""
+    return {"connected_agents": connected_agents}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
 
 @app.get("/")
 async def root():

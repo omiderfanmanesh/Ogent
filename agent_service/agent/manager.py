@@ -4,12 +4,15 @@ import logging
 import uuid
 import asyncio
 from typing import Dict, Any, Optional, Callable, Awaitable, List
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 from .executors import CommandExecutor, LocalExecutor, SSHExecutor
 from .config import config
 
 logger = logging.getLogger("agent.manager")
+
+# Use timezone.utc instead of UTC for Python 3.9 compatibility
+UTC = timezone.utc
 
 class AgentManager:
     """Manager for handling command execution and managing executors."""

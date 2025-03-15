@@ -24,7 +24,7 @@ class RedisManager:
         """Connect to Redis"""
         try:
             logger.info(f"Connecting to Redis at {self.url}")
-            self.client = redis.from_url(self.url)
+            self.client = redis.from_url(self.url, socket_timeout=5, socket_connect_timeout=5, retry_on_timeout=True)
             self.pubsub = self.client.pubsub()
             self.connected = True
             logger.info("Connected to Redis")

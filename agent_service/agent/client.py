@@ -5,10 +5,11 @@ import asyncio
 import socketio
 import logging
 import json
-from datetime import datetime, UTC
+from datetime import datetime
 
 from .config import config
 from .manager import agent_manager
+from .utils import UTC
 
 # Configure logging
 logger = logging.getLogger("agent.client")

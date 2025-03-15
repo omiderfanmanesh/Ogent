@@ -4,12 +4,13 @@ import logging
 import uuid
 import asyncio
 from typing import Dict, Any, Optional, Callable, Awaitable, List
-from datetime import datetime, UTC
+from datetime import datetime
 
 from agent.domain.interfaces.command_executor import CommandExecutorInterface
 from agent.domain.models.command import Command
 from agent.domain.models.executor import Executor
 from agent.application.dtos.command_dto import CommandRequestDTO, CommandResponseDTO
+from agent.utils import UTC
 
 logger = logging.getLogger("agent.manager")
 

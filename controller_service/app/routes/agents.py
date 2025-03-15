@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 from ..auth import get_current_user
-from ..socket_manager import socket_manager
+from ..socket_manager import socket_manager, connected_agents, sio
 from ..ai import ai_manager
 
 router = APIRouter(
@@ -20,7 +20,15 @@ async def list_agents(current_user: Dict = Depends(get_current_user)):
     """
     List all connected agents
     """
-    agents = socket_manager.get_agents()
+    agents = []
+    for sid, agent_info in connected_agents.items():
+        agent_id = agent_info.get('agent_id', f'agent-{sid}')
+        agents.append({
+            'sid': sid,
+            'agent_id': agent_id,
+            'username': agent_info.get('username', 'unknown'),
+            'connected_at': agent_info.get('connected_at', datetime.utcnow().isoformat())
+        })
     return agents
 
 @router.get("/{agent_id}", response_model=Dict[str, Any])
@@ -28,13 +36,19 @@ async def get_agent(agent_id: str, current_user: Dict = Depends(get_current_user
     """
     Get information about a specific agent
     """
-    agent = socket_manager.get_agent(agent_id)
-    if not agent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent with ID {agent_id} not found"
-        )
-    return agent
+    for sid, agent_info in connected_agents.items():
+        if agent_info.get('agent_id') == agent_id:
+            return {
+                'sid': sid,
+                'agent_id': agent_id,
+                'username': agent_info.get('username', 'unknown'),
+                'connected_at': agent_info.get('connected_at', datetime.utcnow().isoformat())
+            }
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Agent with ID {agent_id} not found"
+    )
 
 @router.post("/{agent_id}/execute", response_model=Dict[str, Any])
 async def execute_command(
@@ -63,18 +77,16 @@ async def execute_command(
         )
     
     # Check if agent exists
-    agent = socket_manager.get_agent(agent_id)
-    if not agent:
+    target_agent_sid = None
+    for sid, agent_info in connected_agents.items():
+        if agent_info.get('agent_id') == agent_id:
+            target_agent_sid = sid
+            break
+    
+    if not target_agent_sid:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent with ID {agent_id} not found"
-        )
-    
-    # Check if SSH is requested but not available
-    if execution_target == "ssh" and not agent.get("agent_info", {}).get("ssh_enabled", False):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"SSH execution requested but agent does not have SSH enabled"
         )
     
     # Process command with AI if requested
@@ -83,13 +95,8 @@ async def execute_command(
     
     if use_ai:
         try:
-            # Get the actual system type from agent info
-            agent_system = agent.get("agent_info", {}).get("platform", "Linux")
-            if agent_system == "Darwin":
-                agent_system = "macOS"
-            
             # Process the command with AI
-            ai_result = await ai_manager.process_command(command, agent_system, context)
+            ai_result = await ai_manager.process_command(command, system, context)
             
             # Check if the command is safe to execute
             if not ai_result.get("validation", {}).get("safe", True):
@@ -142,21 +149,21 @@ async def analyze_command(
     - **context**: The execution context
     """
     # Check if agent exists
-    agent = socket_manager.get_agent(agent_id)
-    if not agent:
+    agent_exists = False
+    for sid, agent_info in connected_agents.items():
+        if agent_info.get('agent_id') == agent_id:
+            agent_exists = True
+            break
+    
+    if not agent_exists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent with ID {agent_id} not found"
         )
     
-    # Get the actual system type from agent info
-    agent_system = agent.get("agent_info", {}).get("platform", "Linux")
-    if agent_system == "Darwin":
-        agent_system = "macOS"
-    
     # Process the command with AI
     try:
-        ai_result = await ai_manager.process_command(command, agent_system, context)
+        ai_result = await ai_manager.process_command(command, system, context)
         
         # Return the AI analysis
         return {

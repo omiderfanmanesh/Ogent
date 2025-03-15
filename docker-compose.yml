@@ -6,7 +6,7 @@ services:
       context: ./controller_service
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
       - SECRET_KEY=your_secure_secret_key_for_development
       - REDIS_URL=redis://redis:6379/0
@@ -24,7 +24,7 @@ services:
     depends_on:
       - controller
     environment:
-      - CONTROLLER_URL=http://controller:8000
+      - CONTROLLER_URL=http://controller:8001
       - AGENT_USERNAME=admin
       - AGENT_PASSWORD=password
       - RECONNECT_DELAY=5
@@ -40,7 +40,9 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    build:
+      context: ./redis_service
+      dockerfile: Dockerfile
     ports:
       - "6379:6379"
     volumes:

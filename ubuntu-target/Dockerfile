@@ -31,5 +31,9 @@ RUN mkdir -p /home/${SSH_USER}/test && \
 # Expose SSH port
 EXPOSE 22
 
+# Add health check
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+    CMD pgrep sshd || exit 1
+
 # Start SSH service
 CMD ["/usr/sbin/sshd", "-D"] 

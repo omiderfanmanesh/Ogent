@@ -1,12 +1,15 @@
 """Local executor for command execution."""
 
+import os
+import sys
 import asyncio
 import subprocess
 import platform
 import logging
 from typing import Dict, Any, Optional, Callable, Awaitable
-from datetime import datetime, UTC
+from datetime import datetime
 
+from ..utils import UTC
 from .base_executor import CommandExecutor
 
 logger = logging.getLogger("agent.executor.local")

@@ -4,8 +4,9 @@ import os
 import logging
 import paramiko
 from typing import Dict, Any, Optional, Callable, Awaitable, Tuple
-from datetime import datetime, UTC
+from datetime import datetime
 
+from ..utils import UTC
 from .base_executor import CommandExecutor
 
 logger = logging.getLogger("agent.executor.ssh")
