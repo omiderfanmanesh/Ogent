@@ -1,4 +1,4 @@
-"""Common API models."""
+"""Error response model."""
 
 from pydantic import BaseModel, Field
 
