@@ -1,27 +1,34 @@
-"""Application DTOs package for the controller service."""
+"""DTOs for the controller service."""
 
-from .agent_dto import AgentDTO, AgentInfoDTO
-from .command_dto import (
+from controller_service.app.application.dtos.command import (
     CommandRequestDTO,
+    CommandResponseDTO,
     CommandValidationDTO,
     CommandOptimizationDTO,
     CommandComponentDTO,
     CommandEnrichmentDTO,
-    CommandAIProcessingDTO,
-    CommandResponseDTO
+    CommandAIProcessingDTO
 )
-from .user_dto import UserDTO, UserCredentialsDTO, TokenDTO
+from controller_service.app.application.dtos.agent_dto import (
+    AgentInfoDTO,
+    AgentDTO
+)
+from controller_service.app.application.dtos.user_dto import (
+    UserDTO,
+    UserCredentialsDTO,
+    TokenDTO
+)
 
 __all__ = [
-    "AgentDTO",
-    "AgentInfoDTO",
     "CommandRequestDTO",
+    "CommandResponseDTO",
     "CommandValidationDTO",
     "CommandOptimizationDTO",
     "CommandComponentDTO",
     "CommandEnrichmentDTO",
     "CommandAIProcessingDTO",
-    "CommandResponseDTO",
+    "AgentInfoDTO",
+    "AgentDTO",
     "UserDTO",
     "UserCredentialsDTO",
     "TokenDTO"

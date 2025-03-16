@@ -19,16 +19,17 @@ class AIServiceBase(ABC):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         logger.info(f"API Key present: {self.api_key is not None}")
         
-        self.enabled = self.api_key is not None
+        self.enabled = False  # Default to disabled until successfully initialized
         self.client = None
         
-        if not self.enabled:
+        if not self.api_key:
             logger.warning("OpenAI API key not provided, AI features are disabled")
             return
         
         try:
             # Initialize OpenAI client
             self.client = OpenAI(api_key=self.api_key)
+            self.enabled = True  # Only enable if initialization succeeds
             logger.info(f"{self.__class__.__name__} initialized successfully")
             
         except Exception as e:
@@ -48,6 +49,6 @@ class AIServiceBase(ABC):
         """Process a request with the AI service
         
         Returns:
-            Dict[str, Any]: The processed result
+            Dict[str, Any]: Processing result
         """
         pass 

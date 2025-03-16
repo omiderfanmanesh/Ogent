@@ -53,7 +53,7 @@ class TestAIServiceBase(unittest.TestCase):
         self.assertTrue(service.is_enabled())
         self.assertEqual(service.api_key, "env_test_key")
     
-    @patch("openai.OpenAI")
+    @patch("app.ai.base.OpenAI")
     def test_init_with_openai_error(self, mock_openai):
         """Test initialization with OpenAI error"""
         mock_openai.side_effect = Exception("Test error")
