@@ -5,7 +5,7 @@ from typing import Dict, Any, Union
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException
 
 from agent.presentation.api.auth import authenticate
-from agent.presentation.api.models import (
+from agent.presentation.api.model import (
     CommandRequest, 
     CommandResponse, 
     WebSocketRedirectResponse,

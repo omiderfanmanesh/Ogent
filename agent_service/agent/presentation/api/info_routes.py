@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
 
 from agent.presentation.api.auth import authenticate
-from agent.presentation.api.models import InfoResponse, ExecutorInfo
+from agent.presentation.api.model import InfoResponse, ExecutorInfo
 from agent.infrastructure.container import container
 from agent.infrastructure.config.config import config
 
