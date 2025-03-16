@@ -1,4 +1,4 @@
-"""API module for the agent service."""
+"""API layer for the agent service."""
 
 from .routes import router
 
